@@ -135,3 +135,69 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(len(all_products), 1)
         self.assertEqual(all_products[0].id, old_id)
         self.assertEqual(all_products[0].description, new_description)
+
+    def test_delete_a_product(self):
+        """It should delete a product from the database."""
+        product = ProductFactory()
+        product.create()
+        self.assertEqual(len(Product.all()), 1)
+        # Delete the product from the database and check deletion.
+        product.delete()
+        self.assertEqual(len(Product.all()), 0)
+
+    def test_list_all_products(self):
+        """It should list multliple products from the database after creation"""
+        self.assertEqual(len(Product.all()), 0)
+        for _ in range(5):
+            ProductFactory().create()
+
+        # Check that all five products were saved.
+        self.assertEqual(len(Product.all()), 5)
+
+    def test_find_product_by_name(self):
+        """It should find a product by name from the full list of products."""
+        products = ProductFactory.create_batch(5)
+        for product in products:
+            product.create()
+
+        # Retrieve the first product to use as search key.
+        first_prod_name = products[0].name
+        first_prod_count = len([product for product in products if product.name == first_prod_name])
+
+        # Check that all matching products retrieved have the same name.
+        all_match_products = Product.find_by_name(first_prod_name)
+        self.assertEqual(all_match_products.count(), first_prod_count)
+        for matching_prod in all_match_products:
+            self.assertEqual(matching_prod.name, first_prod_name)
+
+    def test_find_by_availability(self):
+        """It should find products by availability status."""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+
+        # Retrieve the availability of the first product to use as availability key.
+        availability = products[0].available
+        count = len([product for product in products if product.available == availability])
+
+        # Check the count of retrieved products with the same availability.
+        all_match_products = Product.find_by_availability(availability)
+        self.assertEqual(all_match_products.count(), count)
+        for matching_prod in all_match_products:
+            self.assertEqual(matching_prod.available, availability)
+
+    def test_find_by_category(self):
+        """It should find products by category."""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+
+        # Retrieve the category of the first product to use as category key.
+        category = products[0].category
+        count = len([product for product in products if product.category == category])
+
+        # Check the count of retrieved products with the same category.
+        all_match_products = Product.find_by_category(category)
+        self.assertEqual(all_match_products.count(), count)
+        for matching_prod in all_match_products:
+            self.assertEqual(matching_prod.category, category)
