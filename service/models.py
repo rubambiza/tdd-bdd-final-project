@@ -53,7 +53,7 @@ class Category(Enum):
     """Enumeration of valid Product Categories"""
 
     UNKNOWN = 0
-    CLOTHS = 1
+    CLOTHES = 1
     FOOD = 2
     HOUSEWARES = 3
     AUTOMOTIVE = 4

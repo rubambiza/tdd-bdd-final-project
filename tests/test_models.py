@@ -72,7 +72,7 @@ class TestProductModel(unittest.TestCase):
 
     def test_create_a_product(self):
         """It should Create a product and assert that it exists"""
-        product = Product(name="Fedora", description="A red hat", price=12.50, available=True, category=Category.CLOTHS)
+        product = Product(name="Fedora", description="A red hat", price=12.50, available=True, category=Category.CLOTHES)
         self.assertEqual(str(product), "<Product Fedora id=[None]>")
         self.assertTrue(product is not None)
         self.assertEqual(product.id, None)
@@ -80,7 +80,7 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(product.description, "A red hat")
         self.assertEqual(product.available, True)
         self.assertEqual(product.price, 12.50)
-        self.assertEqual(product.category, Category.CLOTHS)
+        self.assertEqual(product.category, Category.CLOTHES)
 
     def test_add_a_product(self):
         """It should Create a product and add it to the database"""
@@ -101,6 +101,37 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(new_product.available, product.available)
         self.assertEqual(new_product.category, product.category)
 
-    #
-    # ADD YOUR TEST CASES HERE
-    #
+    def test_read_a_product(self):
+        """It should Create a product and retrieve the correct info from the database"""
+        product = ProductFactory()
+        app.logger.info(f"Product to be read: {product}")
+        product.id = None
+        product.create()
+        self.assertIsNotNone(product.id)
+        read_product = Product.find(product.id)
+        # Assert that the found properties match
+        self.assertEqual(read_product.id, product.id)
+        self.assertEqual(read_product.name, product.name)
+        self.assertEqual(read_product.description, product.description)
+        self.assertEqual(read_product.available, product.available)
+        self.assertEqual(read_product.category, product.category)
+
+    def test_update_a_product(self):
+        """It should that product updates are functioning correctly."""
+        product = ProductFactory()
+        app.logger.info(f"Product to be updated: {product}")
+        product.id = None
+        product.create()
+        app.logger.info(f"Verify correct creation: {product}")
+        # Update the description and assert update proceeded as expected.
+        new_description = "Updated description"
+        old_id = product.id
+        product.description = new_description
+        product.update()
+        read_product = Product.find(product.id)
+        self.assertEqual(read_product.id, old_id)
+        # Fetch all and verify there is only one product.
+        all_products = Product.all()
+        self.assertEqual(len(all_products), 1)
+        self.assertEqual(all_products[0].id, old_id)
+        self.assertEqual(all_products[0].description, new_description)
