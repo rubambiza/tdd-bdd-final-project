@@ -28,10 +28,12 @@ import os
 import logging
 from decimal import Decimal
 from unittest import TestCase
+from urllib.parse import quote_plus
 from service import app
 from service.common import status
 from service.models import db, init_db, Product
 from tests.factories import ProductFactory
+
 
 # Disable all but critical errors during normal test run
 # uncomment for debugging failing tests
@@ -277,7 +279,7 @@ class TestProductRoutes(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_get_product_list(self):
-        """It should list all the products in the database."""
+        """It should list all the Products in the database."""
         #     Signature: GET /products
         # Create the products
         self._create_products(5)
@@ -287,6 +289,80 @@ class TestProductRoutes(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
         self.assertEqual(len(data), 5)
+
+    def test_get_product_by_name(self):
+        """It should list all Products with a given name."""
+        # Create the products
+        products = self._create_products(5)
+
+        # Get the first product name for testing.
+        test_name = products[0].name
+
+        # Count the products with the same name.
+        count = len([product for product in products if product.name == test_name])
+
+        # Retrieve products with the given name in the database.
+        response = self.client.get(
+            BASE_URL, query_string=f"name={quote_plus(test_name)}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the retrieved data matches the expected count and details.
+        data = response.get_json()
+        self.assertEqual(len(data), count)
+        for product in data:
+            self.assertEqual(product["name"], test_name)
+
+    def test_get_product_by_category(self):
+        """It should list all Products by a given category."""
+        # Create the products
+        products = self._create_products(5)
+
+        # Get the first product name for testing.
+        test_category = products[0].category
+
+        # Check and count all products that match the category.
+        found = [product for product in products if product.category == test_category]
+        found_count = len(found)
+
+        # Log the found products and count details.
+        logging.debug("Count: %d\n, All Products %s", found_count, found)
+
+        # Retrieve products with the given category in the database.
+        response = self.client.get(
+            BASE_URL, query_string=f"category={test_category.name}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the retrieved data matches the expected count and details.
+        data = response.get_json()
+        self.assertEqual(len(data), found_count)
+        for product in data:
+            self.assertEqual(product["category"], test_category.name)
+
+    def test_get_product_by_availability(self):
+        """It should list all Products by availability."""
+        # Create the products
+        products = self._create_products(5)
+
+        # Check and count all products that match the availability.
+        found = [product for product in products if product.available]
+        found_count = len(found)
+
+        # Log the found products and count details.
+        logging.debug("Count: %d\n, All Products %s", found_count, found)
+
+        # Retrieve products with the given availability in the database.
+        response = self.client.get(
+            BASE_URL, query_string="available=True"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the retrieved data matches the expected count and details.
+        data = response.get_json()
+        self.assertEqual(len(data), found_count)
+        for product in data:
+            self.assertEqual(product["available"], True)
 
     # def test_create_product_with_invalid_availability(self):
     #     """It should throw a data validation error when creating product with wrong availability."""
