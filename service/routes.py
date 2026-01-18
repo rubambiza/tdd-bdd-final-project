@@ -66,6 +66,15 @@ def check_content_type(content_type):
     )
 
 
+def inject_not_found_method(product_id, method):
+    """
+    Injects the product id and request method into a not found response
+    """
+    error_msg = f"No product with {product_id} exists in the DB for {method}"
+    app.logger.debug(error_msg)
+    return error_msg
+
+
 ######################################################################
 # C R E A T E   A   N E W   P R O D U C T
 ######################################################################
@@ -94,10 +103,22 @@ def create_products():
 ######################################################################
 # L I S T   A L L   P R O D U C T S
 ######################################################################
-# @app.route("/products", methods=["POST"])
-#
-# PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
-#
+@app.route("/products", methods=["GET"])
+def list_products():
+    """Returns a list of Products"""
+    app.logger.info("Request to list Products...")
+
+    # Retrieve all the products.
+    all_products = Product.all()
+
+    # Serialize all the products.
+    serialized_products = [product.serialize() for product in all_products]
+
+    # Log the number of products being returned.
+    app.logger.info(f"Number of Products: {len(serialized_products)}")
+
+    return serialized_products, status.HTTP_200_OK
+
 
 ######################################################################
 # R E A D   A   P R O D U C T
@@ -131,7 +152,8 @@ def update_products(product_id):
     # Retrieve the Product.
     old_product = Product.find(product_id)
     if not isinstance(old_product, Product):
-        return not_found(f"No product with {product_id} exists in the DB")
+        # return not_found(f"No product with {product_id} exists in the DB")
+        return not_found(inject_not_found_method(product_id, "UPDATE"))
 
     # Update the product.
     data = request.get_json()
@@ -151,8 +173,20 @@ def update_products(product_id):
 ######################################################################
 # D E L E T E   A   P R O D U C T
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """
+    Delete a Product
 
+    This endpoint will delete a Product based on the product ID received.
+    """
+    app.logger.info("Request to Delete a product with id [%s]", product_id)
 
-#
-# PLACE YOUR CODE TO DELETE A PRODUCT HERE
-#
+    # Retrieve the produt to be deleted.
+    product = Product.find(product_id)
+    if not isinstance(product, Product):
+        return not_found(inject_not_found_method(product_id, "Delete"))
+
+    # Delete the product if found.
+    product.delete()
+    return "", status.HTTP_204_NO_CONTENT

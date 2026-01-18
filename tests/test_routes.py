@@ -220,7 +220,7 @@ class TestProductRoutes(TestCase):
         self.assertEqual(updated_product['description'], updated_desc)
 
     def test_update_invalid_product(self):
-        """It should not Update a product does not exist."""
+        """It should not Update a Product does not exist."""
         # Signature: PUT /products/{id}
         test_product = ProductFactory()
 
@@ -241,13 +241,52 @@ class TestProductRoutes(TestCase):
             )
         self.assertEqual(update_resp.status_code, status.HTTP_404_NOT_FOUND)
 
-    # def test_list_products(self):
-    #     """It should list all the products in the database."""
-    #     Signature: get /products
+    def test_delete_product(self):
+        """It should Delete an existing Product."""
+        # Signature: DELETE /products/{id}
+        products = self._create_products(5)
 
-    # def test_delete_product(self):
-    #     """It should delete an existing product."""
-    #     Signature: delete /products/{id}
+        # Count the initial number of products and get the first one.
+        count = self.get_product_count()
+        test_product = products[0]
+
+        # Delete the product and check the status code.
+        response = self.client.delete(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.get_json(), None)
+
+        # Test that a query for the deleted product returns not found.
+        query_resp = self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(query_resp.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Check that there is one fewer product after deletion.
+        updated_count = self.get_product_count()
+        self.assertNotEqual(count, updated_count)
+
+    def test_delete_invalid_product(self):
+        """It should not Delete a Product that does not exist"""
+        # Signature: DELETE /products/{id}
+        products = self._create_products(5)
+
+        # Get the first product for testing.
+        test_product = products[0]
+        test_product.id = 0
+
+        # Delete the product and check the status code.
+        response = self.client.delete(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_product_list(self):
+        """It should list all the products in the database."""
+        #     Signature: GET /products
+        # Create the products
+        self._create_products(5)
+
+        # Retrieve and check the cardinality of all the products.
+        response = self.client.get(f"{BASE_URL}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 5)
 
     # def test_create_product_with_invalid_availability(self):
     #     """It should throw a data validation error when creating product with wrong availability."""
