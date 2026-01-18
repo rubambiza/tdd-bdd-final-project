@@ -135,14 +135,14 @@ class TestProductRoutes(TestCase):
         #
 
         # # Check that the location header was correct
-        # response = self.client.get(location)
-        # self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # new_product = response.get_json()
-        # self.assertEqual(new_product["name"], test_product.name)
-        # self.assertEqual(new_product["description"], test_product.description)
-        # self.assertEqual(Decimal(new_product["price"]), test_product.price)
-        # self.assertEqual(new_product["available"], test_product.available)
-        # self.assertEqual(new_product["category"], test_product.category.name)
+        response = self.client.get(location)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        new_product = response.get_json()
+        self.assertEqual(new_product["name"], test_product.name)
+        self.assertEqual(new_product["description"], test_product.description)
+        self.assertEqual(Decimal(new_product["price"]), test_product.price)
+        self.assertEqual(new_product["available"], test_product.available)
+        self.assertEqual(new_product["category"], test_product.category.name)
 
     def test_create_product_with_no_name(self):
         """It should not Create a Product without a name"""
@@ -166,6 +166,97 @@ class TestProductRoutes(TestCase):
     #
     # ADD YOUR TEST CASES HERE
     #
+    def test_get_product(self):
+        """It should retrieve a product from the database."""
+        # Create a product
+        test_product = self._create_products(1)[0]
+
+        # Make a Get request for the product
+        response = self.client.get(f"{BASE_URL}/{test_product.id}")
+
+        # Assert that the retrieved result matches the original product.
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        new_product = response.get_json()
+        self.assertEqual(new_product["name"], test_product.name)
+        self.assertEqual(new_product["description"], test_product.description)
+        self.assertEqual(Decimal(new_product["price"]), test_product.price)
+        self.assertEqual(new_product["available"], test_product.available)
+        self.assertEqual(new_product["category"], test_product.category.name)
+
+    def test_get_invalid_product(self):
+        """It should throw a error when getting an invalid Product"""
+        # Create a product
+        test_product = self._create_products(1)[0]
+
+        # Make a Get request for an invalid product
+        test_product.id = -1
+        response = self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_product(self):
+        """It should Update an existing product."""
+        # Signature: PUT /products/{id}
+        test_product = ProductFactory()
+
+        # Create the product.
+        response = self.client.post(
+                f"{BASE_URL}",
+                json=test_product.serialize()
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Update the product.
+        updated_desc = "New description"
+        new_product = response.get_json()
+        new_product["description"] = updated_desc
+        update_resp = self.client.put(
+                f"{BASE_URL}/{new_product['id']}",
+                json=new_product
+            )
+        self.assertEqual(update_resp.status_code, status.HTTP_200_OK)
+
+        # Check that the description of the product was updated as expected.
+        updated_product = update_resp.get_json()
+        self.assertEqual(updated_product['description'], updated_desc)
+
+    def test_update_invalid_product(self):
+        """It should not Update a product does not exist."""
+        # Signature: PUT /products/{id}
+        test_product = ProductFactory()
+
+        # Create the product.
+        response = self.client.post(
+                f"{BASE_URL}",
+                json=test_product.serialize()
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Update the product.
+        updated_id = -1
+        new_product = response.get_json()
+        new_product["id"] = updated_id
+        update_resp = self.client.put(
+                f"{BASE_URL}/{new_product['id']}",
+                json=new_product
+            )
+        self.assertEqual(update_resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    # def test_list_products(self):
+    #     """It should list all the products in the database."""
+    #     Signature: get /products
+
+    # def test_delete_product(self):
+    #     """It should delete an existing product."""
+    #     Signature: delete /products/{id}
+
+    # def test_create_product_with_invalid_availability(self):
+    #     """It should throw a data validation error when creating product with wrong availability."""
+    #     test_product = ProductFactory()
+    #     test_product.available = 14.5
+    #     serialized_prod = test_product.serialize()
+    #     logging.debug("Test Product with Invalid Availability: %s", serialized_prod)
+    #     with self.assertRaises(DataValidationError):
+    #         serialized_prod.deserialize()
 
     ######################################################################
     # Utility functions

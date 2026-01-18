@@ -22,6 +22,7 @@ from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
 from service.models import Product
 from service.common import status  # HTTP Status Codes
+from service.common.error_handlers import not_found  # Error handlers
 from . import app
 
 
@@ -86,18 +87,14 @@ def create_products():
 
     message = product.serialize()
 
-    #
-    # Uncomment this line of code once you implement READ A PRODUCT
-    #
-    # location_url = url_for("get_products", product_id=product.id, _external=True)
-    location_url = "/"  # delete once READ is implemented
+    location_url = url_for("get_products", product_id=product.id, _external=True)
     return jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
 
 
 ######################################################################
 # L I S T   A L L   P R O D U C T S
 ######################################################################
-
+# @app.route("/products", methods=["POST"])
 #
 # PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
 #
@@ -105,18 +102,51 @@ def create_products():
 ######################################################################
 # R E A D   A   P R O D U C T
 ######################################################################
+@app.route("/products/<product_id>", methods=["GET"])
+def get_products(product_id):
+    """
+    Reads a product from the database given a product ID
+    """
+    found = Product.find(product_id)
+    if not found:
+        # return {}, status.HTTP_404_NOT_FOUND
+        return not_found(f"No product with {product_id} exists in the DB")
 
-#
-# PLACE YOUR CODE HERE TO READ A PRODUCT
-#
+    serialized_prod = found.serialize()
+    return serialized_prod, status.HTTP_200_OK
+
 
 ######################################################################
 # U P D A T E   A   P R O D U C T
 ######################################################################
+@app.route("/products/<product_id>", methods=["PUT"])
+def update_products(product_id):
+    """
+    Update a Product
+    This endpoint updates a product based on the body that is posted.
+    """
+    app.logger.info("Request to Update a product with id [%s]", product_id)
+    check_content_type("application/json")
 
-#
-# PLACE YOUR CODE TO UPDATE A PRODUCT HERE
-#
+    # Retrieve the Product.
+    old_product = Product.find(product_id)
+    if not isinstance(old_product, Product):
+        return not_found(f"No product with {product_id} exists in the DB")
+
+    # Update the product.
+    data = request.get_json()
+    app.logger.info("Processing Update for: %s", data)
+    updated_product = Product()
+    updated_product = updated_product.deserialize(data)
+    old_product.name = updated_product.name
+    old_product.description = updated_product.description
+    old_product.available = updated_product.available
+    old_product.category = updated_product.category
+    old_product.update()
+
+    # Return the serialized version of the updated product.
+    return old_product.serialize(), status.HTTP_200_OK
+
 
 ######################################################################
 # D E L E T E   A   P R O D U C T
