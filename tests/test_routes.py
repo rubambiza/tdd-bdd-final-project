@@ -28,10 +28,12 @@ import os
 import logging
 from decimal import Decimal
 from unittest import TestCase
+from urllib.parse import quote_plus
 from service import app
 from service.common import status
 from service.models import db, init_db, Product
 from tests.factories import ProductFactory
+
 
 # Disable all but critical errors during normal test run
 # uncomment for debugging failing tests
@@ -135,14 +137,14 @@ class TestProductRoutes(TestCase):
         #
 
         # # Check that the location header was correct
-        # response = self.client.get(location)
-        # self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # new_product = response.get_json()
-        # self.assertEqual(new_product["name"], test_product.name)
-        # self.assertEqual(new_product["description"], test_product.description)
-        # self.assertEqual(Decimal(new_product["price"]), test_product.price)
-        # self.assertEqual(new_product["available"], test_product.available)
-        # self.assertEqual(new_product["category"], test_product.category.name)
+        response = self.client.get(location)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        new_product = response.get_json()
+        self.assertEqual(new_product["name"], test_product.name)
+        self.assertEqual(new_product["description"], test_product.description)
+        self.assertEqual(Decimal(new_product["price"]), test_product.price)
+        self.assertEqual(new_product["available"], test_product.available)
+        self.assertEqual(new_product["category"], test_product.category.name)
 
     def test_create_product_with_no_name(self):
         """It should not Create a Product without a name"""
@@ -166,6 +168,210 @@ class TestProductRoutes(TestCase):
     #
     # ADD YOUR TEST CASES HERE
     #
+    def test_get_product(self):
+        """It should retrieve a product from the database."""
+        # Create a product
+        test_product = self._create_products(1)[0]
+
+        # Make a Get request for the product
+        response = self.client.get(f"{BASE_URL}/{test_product.id}")
+
+        # Assert that the retrieved result matches the original product.
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        new_product = response.get_json()
+        self.assertEqual(new_product["name"], test_product.name)
+        self.assertEqual(new_product["description"], test_product.description)
+        self.assertEqual(Decimal(new_product["price"]), test_product.price)
+        self.assertEqual(new_product["available"], test_product.available)
+        self.assertEqual(new_product["category"], test_product.category.name)
+
+    def test_get_invalid_product(self):
+        """It should throw a error when getting an invalid Product"""
+        # Create a product
+        test_product = self._create_products(1)[0]
+
+        # Make a Get request for an invalid product
+        test_product.id = -1
+        response = self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_product(self):
+        """It should Update an existing product."""
+        # Signature: PUT /products/{id}
+        test_product = ProductFactory()
+
+        # Create the product.
+        response = self.client.post(
+                f"{BASE_URL}",
+                json=test_product.serialize()
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Update the product.
+        updated_desc = "New description"
+        new_product = response.get_json()
+        new_product["description"] = updated_desc
+        update_resp = self.client.put(
+                f"{BASE_URL}/{new_product['id']}",
+                json=new_product
+            )
+        self.assertEqual(update_resp.status_code, status.HTTP_200_OK)
+
+        # Check that the description of the product was updated as expected.
+        updated_product = update_resp.get_json()
+        self.assertEqual(updated_product['description'], updated_desc)
+
+    def test_update_invalid_product(self):
+        """It should not Update a Product does not exist."""
+        # Signature: PUT /products/{id}
+        test_product = ProductFactory()
+
+        # Create the product.
+        response = self.client.post(
+                f"{BASE_URL}",
+                json=test_product.serialize()
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Update the product.
+        updated_id = -1
+        new_product = response.get_json()
+        new_product["id"] = updated_id
+        update_resp = self.client.put(
+                f"{BASE_URL}/{new_product['id']}",
+                json=new_product
+            )
+        self.assertEqual(update_resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_product(self):
+        """It should Delete an existing Product."""
+        # Signature: DELETE /products/{id}
+        products = self._create_products(5)
+
+        # Count the initial number of products and get the first one.
+        count = self.get_product_count()
+        test_product = products[0]
+
+        # Delete the product and check the status code.
+        response = self.client.delete(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.get_json(), None)
+
+        # Test that a query for the deleted product returns not found.
+        query_resp = self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(query_resp.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Check that there is one fewer product after deletion.
+        updated_count = self.get_product_count()
+        self.assertNotEqual(count, updated_count)
+
+    def test_delete_invalid_product(self):
+        """It should not Delete a Product that does not exist"""
+        # Signature: DELETE /products/{id}
+        products = self._create_products(5)
+
+        # Get the first product for testing.
+        test_product = products[0]
+        test_product.id = 0
+
+        # Delete the product and check the status code.
+        response = self.client.delete(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_product_list(self):
+        """It should list all the Products in the database."""
+        #     Signature: GET /products
+        # Create the products
+        self._create_products(5)
+
+        # Retrieve and check the cardinality of all the products.
+        response = self.client.get(f"{BASE_URL}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 5)
+
+    def test_get_product_by_name(self):
+        """It should list all Products with a given name."""
+        # Create the products
+        products = self._create_products(5)
+
+        # Get the first product name for testing.
+        test_name = products[0].name
+
+        # Count the products with the same name.
+        count = len([product for product in products if product.name == test_name])
+
+        # Retrieve products with the given name in the database.
+        response = self.client.get(
+            BASE_URL, query_string=f"name={quote_plus(test_name)}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the retrieved data matches the expected count and details.
+        data = response.get_json()
+        self.assertEqual(len(data), count)
+        for product in data:
+            self.assertEqual(product["name"], test_name)
+
+    def test_get_product_by_category(self):
+        """It should list all Products by a given category."""
+        # Create the products
+        products = self._create_products(5)
+
+        # Get the first product name for testing.
+        test_category = products[0].category
+
+        # Check and count all products that match the category.
+        found = [product for product in products if product.category == test_category]
+        found_count = len(found)
+
+        # Log the found products and count details.
+        logging.debug("Count: %d\n, All Products %s", found_count, found)
+
+        # Retrieve products with the given category in the database.
+        response = self.client.get(
+            BASE_URL, query_string=f"category={test_category.name}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the retrieved data matches the expected count and details.
+        data = response.get_json()
+        self.assertEqual(len(data), found_count)
+        for product in data:
+            self.assertEqual(product["category"], test_category.name)
+
+    def test_get_product_by_availability(self):
+        """It should list all Products by availability."""
+        # Create the products
+        products = self._create_products(5)
+
+        # Check and count all products that match the availability.
+        found = [product for product in products if product.available]
+        found_count = len(found)
+
+        # Log the found products and count details.
+        logging.debug("Count: %d\n, All Products %s", found_count, found)
+
+        # Retrieve products with the given availability in the database.
+        response = self.client.get(
+            BASE_URL, query_string="available=True"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the retrieved data matches the expected count and details.
+        data = response.get_json()
+        self.assertEqual(len(data), found_count)
+        for product in data:
+            self.assertEqual(product["available"], True)
+
+    # def test_create_product_with_invalid_availability(self):
+    #     """It should throw a data validation error when creating product with wrong availability."""
+    #     test_product = ProductFactory()
+    #     test_product.available = 14.5
+    #     serialized_prod = test_product.serialize()
+    #     logging.debug("Test Product with Invalid Availability: %s", serialized_prod)
+    #     with self.assertRaises(DataValidationError):
+    #         serialized_prod.deserialize()
 
     ######################################################################
     # Utility functions

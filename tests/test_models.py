@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, DataValidationError, db
 from service import app
 from tests.factories import ProductFactory
 
@@ -117,7 +117,7 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(read_product.category, product.category)
 
     def test_update_a_product(self):
-        """It should that product updates are functioning correctly."""
+        """It should test that product updates are functioning correctly."""
         product = ProductFactory()
         app.logger.info(f"Product to be updated: {product}")
         product.id = None
@@ -135,6 +135,20 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(len(all_products), 1)
         self.assertEqual(all_products[0].id, old_id)
         self.assertEqual(all_products[0].description, new_description)
+
+    def test_update_a_product_with_invalid_id(self):
+        """It should test product updates with invalid ID raise an error."""
+        product = ProductFactory()
+        app.logger.info(f"Product to be updated: {product}")
+        product.id = None
+        product.create()
+        app.logger.info(f"Verify correct creation: {product}")
+        # Update the description and assert update raises an error.
+        new_description = "Updated description"
+        product.id = None
+        product.description = new_description
+        with self.assertRaises(DataValidationError):
+            product.update()
 
     def test_delete_a_product(self):
         """It should delete a product from the database."""
@@ -201,3 +215,19 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(all_match_products.count(), count)
         for matching_prod in all_match_products:
             self.assertEqual(matching_prod.category, category)
+
+    def test_find_by_price(self):
+        """It should find products by price."""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+
+        # Retrieve the price of the first product to use as key.
+        target_price = products[0].price
+        count = len([product for product in products if product.price == target_price])
+
+        # Check the count of retrieved products with the same price.
+        all_match_products = Product.find_by_price(str(target_price))
+        self.assertEqual(all_match_products.count(), count)
+        for matching_prod in all_match_products:
+            self.assertEqual(matching_prod.price, target_price)
