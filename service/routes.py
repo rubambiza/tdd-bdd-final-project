@@ -22,7 +22,7 @@ from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
 from service.models import Category, Product
 from service.common import status  # HTTP Status Codes
-from service.common.error_handlers import not_found  # Error handlers
+from service.common.error_handlers import not_found, method_not_supported  # Error handlers
 from . import app
 
 
@@ -144,11 +144,21 @@ def get_products(product_id):
     """
     found = Product.find(product_id)
     if not found:
-        # return {}, status.HTTP_404_NOT_FOUND
         return not_found(f"No product with {product_id} exists in the DB")
 
     serialized_prod = found.serialize()
     return serialized_prod, status.HTTP_200_OK
+
+
+#################################################################
+# CATCH ACCIDENTAL POSTs
+################################################################
+@app.route("/products/<product_id>", methods=["POST"])
+def wrong_post_for_products(product_id):
+    """
+    Acidetally attempts a post instead of a put to the endpoint.
+    """
+    return method_not_supported(f"No POSTs allowed for {product_id}")
 
 
 ######################################################################
@@ -166,7 +176,6 @@ def update_products(product_id):
     # Retrieve the Product.
     old_product = Product.find(product_id)
     if not isinstance(old_product, Product):
-        # return not_found(f"No product with {product_id} exists in the DB")
         return not_found(inject_not_found_method(product_id, "UPDATE"))
 
     # Update the product.
