@@ -165,9 +165,6 @@ class TestProductRoutes(TestCase):
         response = self.client.post(BASE_URL, data={}, content_type="plain/text")
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
-    #
-    # ADD YOUR TEST CASES HERE
-    #
     def test_get_product(self):
         """It should retrieve a product from the database."""
         # Create a product
@@ -194,6 +191,16 @@ class TestProductRoutes(TestCase):
         test_product.id = -1
         response = self.client.get(f"{BASE_URL}/{test_product.id}")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_put_on_wrong_endpoint(self):
+        """It should throw a error when calling the wrong endpoint"""
+        # Create a product
+        test_product = self._create_products(1)[0]
+
+        # Make a put request on an invalid endpoint
+        test_product.id = -1
+        response = self.client.post(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_update_product(self):
         """It should Update an existing product."""

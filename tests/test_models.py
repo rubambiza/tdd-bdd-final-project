@@ -150,6 +150,35 @@ class TestProductModel(unittest.TestCase):
         with self.assertRaises(DataValidationError):
             product.update()
 
+    def test_deserialize_with_wrong_availability(self):
+        """It should test product updates with invalid availability raise an error."""
+        product = ProductFactory()
+        app.logger.info(f"Product to be updated: {product}")
+        update = {
+            "name": "Lorem",
+            "description": "Ipsum",
+            "price": "0.5",
+            "available": "0.5",
+            "category": Category.FOOD
+        }
+        with self.assertRaises(DataValidationError):
+            product.deserialize(update)
+
+    def test_deserialize_with_invalid_attribute(self):
+        """It should test product updates with invalid availability raise an error."""
+        product = ProductFactory()
+        app.logger.info(f"Product to be updated: {product}")
+        update = {
+            "name": "Lorem",
+            "description": "Ipsum",
+            "price": "0.5",
+            "available": True,
+            "category": Category.FOOD,
+            "store": "FuzzyLocation"
+        }
+        with self.assertRaises(DataValidationError):
+            product.deserialize(update)
+
     def test_delete_a_product(self):
         """It should delete a product from the database."""
         product = ProductFactory()
