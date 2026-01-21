@@ -52,7 +52,7 @@ Scenario: Read a Product
     And I should see "Hat" in the "Name" field
     And I should see "A red fedora" in the "Description" field
     And I should see "True" in the "Available" dropdown
-    And I should see "CLOTHES" in the "Category" dropdown
+    And I should see "Clothes" in the "Category" dropdown
     And I should see "59.95" in the "Price" field
 
 Scenario: Update a Product
@@ -69,6 +69,8 @@ Scenario: Update a Product
     And I paste the "Id" field
     And I press the "Retrieve" button
     Then I should see the message "Success"
+    And I should see "Big Mac" in the "Name" field
+    And I should see "1/4 lb burger" in the "Description" field
     And I should see "6.99" in the "Price" field
     When I press the "Clear" button
     And I press the "Search" button

@@ -176,6 +176,7 @@ def update_products(product_id):
     updated_product = updated_product.deserialize(data)
     old_product.name = updated_product.name
     old_product.description = updated_product.description
+    old_product.price = updated_product.price
     old_product.available = updated_product.available
     old_product.category = updated_product.category
     old_product.update()
